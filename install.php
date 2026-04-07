@@ -85,8 +85,16 @@ foreach ($schemaFiles as $sf) {
     $file = __DIR__ . '/database/' . $sf;
     if (!file_exists($file)) continue;
     $sql = file_get_contents($file);
-    // Remove USE/CREATE DATABASE statements (already selected)
-    $sql = preg_replace('/^\s*(USE|CREATE DATABASE|SET FOREIGN_KEY_CHECKS\s*=\s*0).*/mi', '', $sql);
+
+    // Strip multi-line CREATE DATABASE ... ; blocks (includes CHARACTER SET / COLLATE)
+    $sql = preg_replace('/CREATE\s+(DATABASE|SCHEMA)\s+[^;]+;/si', '', $sql);
+    // Strip USE statements
+    $sql = preg_replace('/^\s*USE\s+`?[^;`]+`?\s*;/mi', '', $sql);
+    // Strip SET FOREIGN_KEY_CHECKS = 0/1
+    $sql = preg_replace('/^\s*SET\s+FOREIGN_KEY_CHECKS\s*=\s*\d+\s*;/mi', '', $sql);
+    // Strip SET SQL_MODE / SET time_zone lines
+    $sql = preg_replace('/^\s*SET\s+(SQL_MODE|time_zone)\s*=[^;]+;/mi', '', $sql);
+
     try {
         $pdo->exec($sql);
         echo "✅ {$sf} applied\n";
