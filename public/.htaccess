@@ -1,6 +1,12 @@
 Options -Indexes
 Options -MultiViews
 
+# ── Temporary: force PHP errors visible for debugging ────────
+# Remove these 3 lines once the app is working
+php_flag display_errors on
+php_flag log_errors on
+php_value error_reporting 32767
+
 RewriteEngine On
 
 # ── Subdirectory base path ──────────────────────────────────────
