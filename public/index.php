@@ -13,24 +13,30 @@ $dotenv->safeLoad();
 
 define('APP_DEBUG', filter_var($_ENV['APP_DEBUG'] ?? false, FILTER_VALIDATE_BOOLEAN));
 
-// Error reporting
+// Error reporting — always show during initial setup
+// Set APP_DEBUG=true in .env to see detailed errors
 if (APP_DEBUG) {
     error_reporting(E_ALL);
     ini_set('display_errors', '1');
+    ini_set('log_errors', '1');
 } else {
-    error_reporting(0);
-    ini_set('display_errors', '0');
+    error_reporting(E_ALL);
+    ini_set('display_errors', '0'); // Don't show to browser
+    ini_set('log_errors', '1');     // But always log
+    ini_set('error_log', BASE_PATH . '/logs/php_errors.log');
 }
 
 // Timezone
 date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'UTC');
 
 // Session
+$cookiePath = rtrim(parse_url($_ENV['APP_URL'] ?? '/', PHP_URL_PATH) ?? '/', '/') . '/';
 session_set_cookie_params([
     'lifetime' => (int)($_ENV['SESSION_LIFETIME'] ?? 7200),
-    'path'     => '/',
+    'path'     => $cookiePath, // e.g. /system-ac/ for subdirectory
     'httponly' => true,
     'samesite' => 'Lax',
+    'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
 ]);
 
 // Instantiate router
