@@ -1,0 +1,7 @@
+.env
+vendor/
+storage/pdfs/
+storage/receipts/
+storage/imports/
+*.log
+.DS_Store
