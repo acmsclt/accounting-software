@@ -75,28 +75,48 @@ echo "✅ Database ready\n";
 
 // Run schema
 echo "\n📊 Running schema...\n";
-$schema = file_get_contents(__DIR__ . '/database/schema.sql');
 $pdo->exec("USE `{$c['database']}`");
-try {
-    $pdo->exec($schema);
-    echo "✅ Schema created\n";
-} catch (PDOException $e) {
-    echo "⚠️  Schema warning (may be already installed): " . $e->getMessage() . "\n";
+// Disable strict primary key requirement (DigitalOcean / cloud MySQL quirk)
+try { $pdo->exec("SET SESSION sql_require_primary_key = OFF"); } catch(PDOException $e) { /* non-fatal */ }
+try { $pdo->exec("SET SESSION sql_mode = ''"); } catch(PDOException $e) { /* non-fatal */ }
+
+$schemaFiles = ['schema.sql', 'rbac.sql'];
+foreach ($schemaFiles as $sf) {
+    $file = __DIR__ . '/database/' . $sf;
+    if (!file_exists($file)) continue;
+    $sql = file_get_contents($file);
+    // Remove USE/CREATE DATABASE statements (already selected)
+    $sql = preg_replace('/^\s*(USE|CREATE DATABASE|SET FOREIGN_KEY_CHECKS\s*=\s*0).*/mi', '', $sql);
+    try {
+        $pdo->exec($sql);
+        echo "✅ {$sf} applied\n";
+    } catch (PDOException $e) {
+        if (str_contains($e->getMessage(), '1050') || str_contains($e->getMessage(), 'already exists')) {
+            echo "ℹ️  {$sf}: tables already exist — skipped\n";
+        } else {
+            echo "⚠️  {$sf} warning: " . $e->getMessage() . "\n";
+        }
+    }
 }
 
 // Seed question
 echo "\n🌱 Seed demo data? [y/N]: ";
 $ans = strtolower(trim(fgets(STDIN)));
 if ($ans === 'y') {
-    $seed = file_get_contents(__DIR__ . '/database/seed.sql');
-    try {
-        $pdo->exec($seed);
-        echo "✅ Demo data seeded\n";
-        echo "   Admin: admin@accountingpro.com / Admin@123\n";
-        echo "   Demo:  john@demo.com / Admin@123\n";
-    } catch (PDOException $e) {
-        echo "⚠️  Seed warning: " . $e->getMessage() . "\n";
+    $seedFiles = ['seed.sql', 'rbac_seed.sql'];
+    foreach ($seedFiles as $sf) {
+        $file = __DIR__ . '/database/' . $sf;
+        if (!file_exists($file)) continue;
+        $sql = file_get_contents($file);
+        try {
+            $pdo->exec($sql);
+            echo "✅ {$sf} seeded\n";
+        } catch (PDOException $e) {
+            echo "⚠️  {$sf} warning: " . $e->getMessage() . "\n";
+        }
     }
+    echo "   Admin: admin@accountingpro.com / Admin@123\n";
+    echo "   Demo:  john@demo.com / Admin@123\n";
 }
 
 // Create storage directories
@@ -121,9 +141,33 @@ $env = preg_replace('/JWT_SECRET=.*/', "JWT_SECRET={$jwt}", $env);
 file_put_contents(__DIR__ . '/.env', $env);
 echo "✅ JWT secret generated\n";
 
+// Secure .env file
+chmod(__DIR__ . '/.env', 0600);
+
+// Update APP_URL with server IP
+$serverIp = trim(shell_exec("hostname -I 2>/dev/null | awk '{print $1}'") ?? 'localhost');
+$env = file_get_contents(__DIR__ . '/.env');
+$env = preg_replace('/APP_URL=.*/', "APP_URL=http://{$serverIp}", $env);
+file_put_contents(__DIR__ . '/.env', $env);
+echo "✅ APP_URL set to http://{$serverIp}\n";
+
+// Fix permissions
+foreach (['storage', 'logs', 'public'] as $d) {
+    if (is_dir(__DIR__.'/'.$d)) {
+        shell_exec("chmod -R 755 " . __DIR__ . "/{$d}");
+    }
+}
+echo "✅ Permissions set\n";
+
 echo "\n";
 echo "╔══════════════════════════════════════╗\n";
 echo "║   🎉 Installation Complete!          ║\n";
 echo "╚══════════════════════════════════════╝\n\n";
-echo "🌐 Start server: php -S localhost:8000 -t public/\n";
-echo "🌐 Or configure Apache/Nginx to point DocumentRoot to public/\n\n";
+echo "🌐 Your app URL: http://{$serverIp}/\n";
+echo "🌐 Quick test:   php -S 0.0.0.0:8000 -t public/\n";
+echo "🔑 Admin login:  admin@accountingpro.com / Admin@123\n";
+echo "\n📋 NEXT STEPS:\n";
+echo "  1. Configure Nginx/Apache (see deploy/nginx.conf or deploy/apache.conf)\n";
+echo "  2. Set up SSL: certbot --nginx -d yourdomain.com\n";
+echo "  3. Update APP_URL in .env to your public domain\n";
+echo "  4. Set APP_DEBUG=false in .env for production\n\n";
