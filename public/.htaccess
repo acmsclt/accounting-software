@@ -3,6 +3,12 @@ Options -MultiViews
 
 RewriteEngine On
 
+# ── Subdirectory base path ──────────────────────────────────────
+# Change this if your app moves to a different path.
+# For root deployment (e.g. https://example.com/) use: RewriteBase /
+# For subdirectory (e.g. https://example.com/system-ac/) use: RewriteBase /system-ac/
+RewriteBase /system-ac/
+
 # Redirect HTTP to HTTPS (uncomment in production)
 # RewriteCond %{HTTPS} off
 # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
@@ -10,7 +16,7 @@ RewriteEngine On
 # Route all non-file/directory requests through index.php
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ /index.php [L,QSA]
+RewriteRule ^(.*)$ index.php [L,QSA]
 
 # Security headers
 <IfModule mod_headers.c>

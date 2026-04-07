@@ -18,7 +18,10 @@
             "App\\Controllers\\": "app/Controllers/",
             "App\\Api\\": "app/Api/",
             "App\\Services\\": "app/Services/"
-        }
+        },
+        "files": [
+            "app/helpers.php"
+        ]
     },
     "config": {
         "optimize-autoloader": true,

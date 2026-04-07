@@ -1,0 +1,20 @@
+Options -Indexes
+
+# Redirect everything into the public/ directory transparently
+RewriteEngine On
+RewriteBase /system-ac/
+
+# Allow direct access to public/ assets (already there)
+RewriteRule ^public/(.*)$ - [L]
+
+# Redirect root and all other requests into public/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ public/$1 [L]
+
+# If hitting the directory root, serve public/index.php
+RewriteRule ^$ public/index.php [L]
+
+# Block direct access to sensitive directories
+RewriteRule ^(app|database|config|storage|logs|vendor|deploy)(/.*)?$ - [F,L]
+RewriteRule ^\.env.* - [F,L]
